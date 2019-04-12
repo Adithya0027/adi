@@ -15,13 +15,14 @@ DHT dht(DHTPIN, DHTTYPE);
 #define FAST_CH_SP 14.4 // bulk charge set point for sealed lead acid battery // flooded type set it to 14.6V
 #define SLOW_CH_SP 13.6  //float charge set point for lead acid battery
 #define LVD 11.5          //Low voltage disconnect setting for a 12V system
-#define PWM_PIN 3         // pin-3 is used to control the charging MOSFET //the default frequency is 490.20Hz
+//#define PWM_PIN 3      
 #define LOAD_PIN 2       // pin-2 is used to control the load
 #define BAT_RED_LED 5
 #define BAT_GREEN_LED 6
 #define BAT_BLUE_LED 7
 #define LOAD_RED_LED 8
 #define LOAD_GREEN_LED 9
+#deifine SOLAR_LED 4
 
 
 //--------------------------------------------------------------------------------------------------------------------------
@@ -182,7 +183,7 @@ int read_adc(int adc_parameter)
 
 
 
-void solar_data(void)
+void solar_data(void)      //to calculate the input voltage
 {
   value = analogRead(SOLAR_ADC);
   vout = (value * 5.0) / 1024.0; 
@@ -192,7 +193,7 @@ void solar_data(void)
 
 /////////////////////////////////POWER AND ENERGY CALCULATION //////////////////////////////////////////////
 
-void current_input(void)
+void current_input(void)          //to calculate the input current
 {
   int A = analogRead(ACS712) + 1;
   Serial.println(A);
@@ -228,7 +229,7 @@ void temper_ature(void)
     temper= dht.readTemperature();
 }
 
-void battery_voltage(void)
+void battery_voltage(void)      // lithium ion battery voltage
 {
   val_ue = analogRead(BAT_ADC);
    v_out = (value * 5.0) / 1024.0; 
@@ -236,7 +237,7 @@ void battery_voltage(void)
    
 }
 
-void current_out(void)
+void current_out(void)        //current 
 {
   int A1 = analogRead(CURRENT_ADC) + 1;
    float vol = A1*vpp;
@@ -250,14 +251,18 @@ void current_out(void)
 void print_data(void)
 {
   delay(100);
-  //Serial.print("Solar Panel Voltage: ");
-  //Serial.print(solar_volt);
-  //Serial.println("V");
-  Serial.print("Battery Voltage: ");
-  Serial.print(voltage);
+  Serial.print("Solar Panel Voltage: ");
+  Serial.print(vin);
   Serial.println("V");
-// Serial.print("Charge Set Point:");
-// Serial.println(fast_charge_sp);
+  Serial.print("Solar Panel Current:");
+  Serial.print(curr_ent);
+  Serial.println("A");
+  Serial.print("Li-ion Battery Voltage: ");
+  Serial.print(v_in);
+  Serial.println("V");
+  Serial.print("Load Current: ");
+  Seial.print(curr);
+  Serial.println("A");
   Serial.print("Humidity: ");
   Serial.print(hum);
   Serial.print("Temperature:");
@@ -355,25 +360,21 @@ void setpoint(void)
 
 }
 
-void charge_pt(void)
+void charge_pt(void)              //in order to do this we need 2 setpoints for fast charging and slow charging
 {
-  if (lead_vol > voltage && voltage <= fast_charge_sp)
-  {
 
 
-    if (voltage <= slow_charge_sp) // charging start
+    if (v_in <= slow_charge_sp) // charging start
     {
       charge_status = 1;   // rapid charging
                      
-
-
     }
-    else if (voltage > slow_charge_sp && voltage <= fast_charge_sp)
+    else if (v_in > slow_charge_sp && v_in <= fast_charge_sp)
     {
       charge_status = 2; // indicate the charger is in SATURATION mode
       
     }
-  }
+  
   else
   {
     charge_status = 0; // indicate the charger is OFF
@@ -412,9 +413,27 @@ void load_control()
 //-------------------------------------------------------------------------------------------------
 void led_indication(void)
 {
+  solar_led();
   battery_led();           //Battery status led indication
   load_led();              //Load led indication
 }
+
+
+//----------------------------------------------------------------------------------------------------------------------
+/////////////////////////////////////////////SOLAR LED INDICATION///////////////////////////////////////////////////////
+//----------------------------------------------------------------------------------------------------------------------
+void solar_led(void)
+{
+  if(vin>5)
+  {
+    leds_off_all();
+    digitalWrite(SOLAR_LED, HIGH);
+  }
+}
+
+
+
+
 
 //----------------------------------------------------------------------------------------------------------------------
 /////////////////////////////////////////////BATTERY LED INDICATION/////////////////////////////////////////////////////
@@ -422,17 +441,17 @@ void led_indication(void)
 void battery_led(void)
 {
 
-  if ( (bat_volt > system_volt) && ( bat_volt < fast_charge_sp))
+  if ( (v_in > vin) && ( v_in < fast_charge_sp))
   {
     leds_off_all();
     digitalWrite(BAT_GREEN_LED, LOW); // battery voltage is healthy
   }
-  else if (bat_volt >= fast_charge_sp)
+  else if (v_in >= fast_charge_sp)
   {
     leds_off_all();
     digitalWrite(BAT_BLUE_LED, LOW); //battery is fully charged
   }
-  else if (bat_volt < system_volt)
+  else if (v_in < system_volt) // find the low value of battery voltage
   {
     leds_off_all();
     digitalWrite(BAT_RED_LED, LOW); // battery voltage low
@@ -459,7 +478,7 @@ void load_led()
 //------------------------------------------------------------------------------------------------------
 void leds_off_all(void)
 {
-
+  digitalWrite(SOLAR_LED, LOW);
   digitalWrite(BAT_RED_LED, HIGH);
   digitalWrite(BAT_GREEN_LED, HIGH);
   digitalWrite(BAT_BLUE_LED, HIGH);
@@ -474,8 +493,8 @@ void lcd_display()
   lcd.setCursor(0, 0);
   lcd.write(1);
   lcd.setCursor(2, 0);
-//  lcd.print(solar_volt);
- // lcd.print("V");
+ lcd.print(vin);  
+ lcd.print("V");
   lcd.setCursor(14, 0);
   lcd.write(5);
   lcd.setCursor(16, 0);
@@ -500,7 +519,7 @@ void lcd_display()
   lcd.setCursor(0, 2);
   lcd.write(3);
   lcd.setCursor(2, 2);
-  lcd.print(load_current);
+  lcd.print(curr);
   lcd.print("A");
   lcd.setCursor(13, 2);
   lcd.print(watts);
