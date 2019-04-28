@@ -23,7 +23,7 @@ DHT dht(DHTPIN, DHTTYPE);
 #define LOAD_RED_LED 8
 #define LOAD_GREEN_LED 9
 #deifine SOLAR_LED 4
-
+int pinOut = 10;
 
 //--------------------------------------------------------------------------------------------------------------------------
 ///////////////////////DECLARATION OF ALL BIT MAP ARRAY FOR FONTS////////////////////////////////////////////////////////////////
@@ -121,7 +121,8 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);  // Set the LCD I2C address // In my case 0x
 void setup()
 {
   pinMode(ACS712, INPUT);
-  Serial.begin(9600);
+  pinMode(CURRENT_ADC, INPUT);
+  pinMode(10, OUTPUT);
   dht.begin();
   pinMode(BAT_RED_LED, OUTPUT);
   pinMode(BAT_GREEN_LED, OUTPUT);
@@ -130,7 +131,7 @@ void setup()
   pinMode(LOAD_GREEN_LED, OUTPUT);
   pinMode(PWM_PIN, OUTPUT);
   pinMode(LOAD_PIN, OUTPUT);
-  digitalWrite(PWM_PIN, LOW); // default value of pwm duty cycle
+  //digitalWrite(PWM_PIN, LOW); // default value of pwm duty cycle
   digitalWrite(LOAD_PIN, LOW); // default load state is OFF
   lcd.begin(); 
   lcd.backlight(); // finish with backlight on
@@ -142,6 +143,7 @@ void setup()
   lcd.createChar(6, charge);
   lcd.createChar(7, not_charge);
   lcd.clear();
+  Serial.begin(9600);
 }
 
 void loop()
@@ -528,9 +530,5 @@ void lcd_display()
   lcd.print("Energy:");
   lcd.print(wattHours);
   lcd.print("WH");
-
-
-
-
 
 }
